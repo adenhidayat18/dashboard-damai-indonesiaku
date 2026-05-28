@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  /* Brand palette */
+  --color-bg:           #0f0e17;
+  --color-surface:      #1a1927;
+  --color-surface-2:    #221f35;
+  --color-border:       rgba(99, 102, 241, 0.15);
+  --color-text:         #e8e6f0;
+  --color-text-muted:   #8b89a0;
+  --color-accent:       #6366f1;
+  --color-accent-glow:  rgba(99, 102, 241, 0.25);
+  --color-gold:         #c9a84c;
+
+  /* Sentimen */
+  --color-positif:  #22c55e;
+  --color-negatif:  #ef4444;
+  --color-netral:   #94a3b8;
+  --color-ambigu:   #f59e0b;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+    linear-gradient(rgba(99, 102, 241, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.03) 1px, transparent 1px);
+  background-size: auto, 40px 40px, 40px 40px;
+}
+
+/* Typography */
+h1, h2, h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-surface); }
+::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.7); }
+
+/* Card component */
+@layer components {
+  .card {
+    @apply rounded-xl border bg-[var(--color-surface)] border-[var(--color-border)] p-5;
+  }
+
+  .card-hover {
+    @apply card transition-all duration-200 hover:border-[rgba(99,102,241,0.35)] hover:shadow-lg hover:shadow-[rgba(99,102,241,0.08)];
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors duration-150 text-sm;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 rounded-lg border border-[var(--color-border)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:border-[rgba(99,102,241,0.35)] transition-all duration-150 text-sm;
+  }
+
+  .stat-label {
+    @apply text-xs font-medium uppercase tracking-widest text-[var(--color-text-muted)];
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold font-[var(--font-display)];
+  }
+}

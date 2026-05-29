@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
+import Papa from "papaparse";
 import {
   calcSentimentDistribution,
   buildTimeSeries,
@@ -22,32 +23,12 @@ export const maxDuration = 300;
 export const runtime = "nodejs";
 
 function parseCsvText(text: string, sourceName: string): RawComment[] {
-  const lines = text.trim().split("\n");
-  if (lines.length < 2) return [];
+  const parsed = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+  });
 
-  const parseRow = (line: string): string[] => {
-    const result: string[] = [];
-    let current = "";
-    let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (ch === "," && !inQuotes) {
-        result.push(current.trim());
-        current = "";
-      } else {
-        current += ch;
-      }
-    }
-    result.push(current.trim());
-    return result;
-  };
+  if (!parsed.data || parsed.data.length === 0) return [];
 
   const toBool = (v: string): boolean => {
     const normalized = (v || "").trim().toLowerCase();
@@ -108,21 +89,17 @@ function parseCsvText(text: string, sourceName: string): RawComment[] {
       return "";
     }
   };
-
-  const headers = parseRow(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, "_"));
   const comments: RawComment[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    if (!lines[i].trim()) continue;
-
-    const values = parseRow(lines[i]);
+  parsed.data.forEach((rawRow, idx) => {
     const row: Record<string, string> = {};
-    headers.forEach((h, idx) => {
-      row[h] = values[idx] ?? "";
-    });
+    for (const [k, v] of Object.entries(rawRow)) {
+      const key = k.toLowerCase().replace(/\s+/g, "_");
+      row[key] = String(v ?? "");
+    }
 
     const content = row["text"] || row["comment"] || row["comment_text"] || row["komentar"] || "";
-    if (!content) continue;
+    if (!content) return;
 
     const pageUrl = row["page_url"] || row["pageurl"] || "";
     const videoIdFromUrl = extractVideoId(pageUrl);
@@ -135,7 +112,7 @@ function parseCsvText(text: string, sourceName: string): RawComment[] {
       "";
 
     comments.push({
-      id: row["id"] || row["comment_id"] || `${sourceName}_c_${i}`,
+      id: row["id"] || row["comment_id"] || `${sourceName}_c_${idx + 1}`,
       videoId: row["video_id"] || row["videoid"] || videoIdFromUrl,
       videoTitle: row["video_title"] || row["judul"] || row["title"] || "",
       videoDescription:
@@ -155,7 +132,7 @@ function parseCsvText(text: string, sourceName: string): RawComment[] {
       isReply: toBool(row["is_reply"] || ""),
       parentId: row["parent_id"] || undefined,
     });
-  }
+  });
 
   return comments;
 }

@@ -33,6 +33,7 @@
 | **Tabel Komentar** | Filter, cari, dan eksplorasi komentar |
 | **Mode Sentiment** | Toggle `Sentiment AI` atau `Sentiment API` |
 | **Filter KOL & Source Sentiment** | Filter dashboard berdasarkan KOL dan sentimen sumber |
+| **Filter Topic** | Filter dashboard berdasarkan topik konten/video |
 
 ---
 
@@ -43,8 +44,8 @@ damai-indonesiaku-dashboard/
 ├── src/
 │   ├── app/
 │   │   ├── api/
-│   │   │   └── analyze/
-│   │   │       └── route.ts        # API endpoint analisis AI
+│   │   │   └── bootstrap-data/
+│   │   │       └── route.ts        # Auto-load semua CSV dari folder file/
 │   │   ├── dashboard/
 │   │   │   └── page.tsx            # Halaman dashboard utama
 │   │   ├── globals.css             # Design system & variabel CSS
@@ -54,16 +55,16 @@ damai-indonesiaku-dashboard/
 │   │   ├── charts/
 │   │   │   ├── SentimentChart.tsx  # Pie chart distribusi sentimen
 │   │   │   ├── NarrativeFrameChart.tsx # Bar chart narrative frames
-│   │   │   ├── TimeSeriesChart.tsx # Area chart tren waktu
+│   │   │   ├── MonthlyCommentsChart.tsx # Line chart distribusi komentar bulanan
+│   │   │   ├── TopTermsChart.tsx   # Bar chart top kata/frasa
 │   │   │   └── KeywordCloud.tsx    # Word cloud keyword
-│   │   ├── CSVUploader.tsx         # Komponen upload & parse CSV
 │   │   ├── StatsOverview.tsx       # Kartu statistik ringkasan
 │   │   └── CommentsTable.tsx       # Tabel komentar dengan filter
 │   ├── lib/
-│   │   ├── anthropic.ts            # Service analisis AI (server)
 │   │   └── utils.ts                # Utility functions
 │   └── types/
 │       └── index.ts                # TypeScript type definitions
+├── file/                            # Folder sumber CSV (auto-load)
 ├── public/
 ├── .env.example                    # Template environment variables
 ├── .gitignore
@@ -92,13 +93,7 @@ npm install
 cp .env.example .env.local
 ```
 
-Edit `.env.local` dan isi nilai-nilainya:
-
-```env
-ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxxx
-```
-
-Dapatkan API key Anthropic di: [console.anthropic.com](https://console.anthropic.com)
+Tidak ada API key wajib untuk mode dashboard saat ini.
 
 ### 3. Jalankan Development Server
 
@@ -161,6 +156,7 @@ File CSV harus memiliki minimal kolom `text` (teks komentar). Kolom lain bersifa
 | `video_id` | `videoid`, dari `pageUrl` YouTube (`?v=`) | string | — |
 | `video_title` | `judul`, `title` | string | — |
 | `video_description` | `description`, `deskripsi`, `deskripsi_video` | string | — |
+| `topic` | `topik`, `video_topic` | string | — |
 | `published_at` | `date`, `tanggal`, `publishedTimeText` | ISO date / text tanggal | — |
 | `likes` | `like_count`, `voteCount` | number | — |
 | `reply_count` | `replyCount` | number | — |
@@ -179,30 +175,7 @@ c001,dQw4w9WgXcQ,Damai Indonesiaku Eps 1,Budi Santoso,"Alhamdulillah program yan
 c002,dQw4w9WgXcQ,Damai Indonesiaku Eps 1,Siti Rahayu,"Islam itu memang agama rahmatan lil alamin, bukan agama kekerasan",23,2024-03-15T09:15:00Z
 ```
 
-> **Batas:** Maksimum 500 komentar per analisis (biaya API). Untuk dataset lebih besar, bagi menjadi beberapa batch.
-
----
-
-## 🤖 Kategori Analisis AI
-
-### Sentimen
-| Label | Deskripsi |
-|-------|-----------|
-| `positif` | Respons mendukung, apresiatif |
-| `negatif` | Respons menolak, kritis, kontra |
-| `netral` | Informatif, tidak memihak |
-| `ambigu` | Campuran atau tidak jelas |
-
-### Narrative Frames
-| Frame | Deskripsi Riset |
-|-------|-----------------|
-| `islam_moderat` | Penerimaan/penolakan narasi Islam wasatiyah |
-| `nasionalisme_religius` | Perpaduan nasionalisme & keislaman |
-| `toleransi` | Wacana toleransi antaragama/antaretnis |
-| `anti_radikalisme` | Respons terhadap isu radikalisme |
-| `identitas_politik` | Islam sebagai identitas politik |
-| `kritik_media` | Kritik framing media, bias, propaganda |
-| `lainnya` | Di luar kategori di atas |
+> **Catatan:** Dashboard memuat seluruh CSV dari folder `file/` secara otomatis saat halaman `/dashboard` dibuka.
 
 ---
 
@@ -215,7 +188,6 @@ c002,dQw4w9WgXcQ,Damai Indonesiaku Eps 1,Siti Rahayu,"Islam itu memang agama rah
 | TypeScript | 5 | Type safety |
 | Tailwind CSS | 3 | Styling |
 | Recharts | 2 | Visualisasi data |
-| Anthropic SDK | 0.39 | Analisis AI |
 | PapaParse | 5 | Parse CSV |
 
 ---

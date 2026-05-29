@@ -11,6 +11,8 @@ import type {
   AnalyzedComment,
   TimeSeriesDataPoint,
   KeywordFrequency,
+  MonthlyCommentDataPoint,
+  TermFrequency,
   FilterState,
   NarrativeFrame,
 } from "@/types";
@@ -132,6 +134,7 @@ export function filterAnalyzedComments(
 
     if (filter.videoId !== "semua" && c.videoId !== filter.videoId) return false;
     if (filter.kol !== "semua" && (c.kol || "").trim() !== filter.kol) return false;
+    if (filter.topic !== "semua" && (c.topic || "").trim() !== filter.topic) return false;
 
     if (
       filter.searchQuery &&
@@ -236,6 +239,69 @@ export function extractTopKeywords(
         dominantFrame,
       };
     });
+}
+
+const STOPWORDS_ID = new Set([
+  "yang", "dan", "di", "ke", "dari", "untuk", "dengan", "ini", "itu", "nya",
+  "atau", "pada", "juga", "karena", "sudah", "belum", "aja", "saja", "agar", "biar",
+  "adalah", "sebagai", "dalam", "lebih", "kurang", "bisa", "tidak", "ga", "gak",
+  "nggak", "iya", "ya", "kita", "kami", "aku", "saya", "mereka", "dia", "anda",
+  "buat", "jadi", "kalau", "jika", "semua", "hanya", "tentang", "sama", "masih",
+  "udah", "banget", "pun", "lah", "deh", "dong", "nih", "sih", "kan", "kok",
+  "www", "http", "https", "com", "youtube", "tvone",
+]);
+
+function tokenizeText(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length >= 3)
+    .filter((w) => !STOPWORDS_ID.has(w))
+    .filter((w) => !/^\d+$/.test(w));
+}
+
+export function extractTopTermsFromComments(
+  comments: AnalyzedComment[],
+  topN = 10
+): TermFrequency[] {
+  const counts = new Map<string, number>();
+
+  for (const c of comments) {
+    const tokens = tokenizeText(c.text);
+
+    for (const token of tokens) {
+      counts.set(token, (counts.get(token) || 0) + 1);
+    }
+
+    for (let i = 0; i < tokens.length - 1; i++) {
+      const phrase = `${tokens[i]} ${tokens[i + 1]}`;
+      counts.set(phrase, (counts.get(phrase) || 0) + 1);
+    }
+  }
+
+  return Array.from(counts.entries())
+    .filter(([, count]) => count > 1)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, topN)
+    .map(([term, count]) => ({ term, count }));
+}
+
+export function buildMonthlyCommentSeries(
+  comments: AnalyzedComment[]
+): MonthlyCommentDataPoint[] {
+  const byMonth: Record<string, number> = {};
+
+  for (const c of comments) {
+    const month = c.publishedAt.slice(0, 7); // YYYY-MM
+    if (!month || month.length < 7) continue;
+    byMonth[month] = (byMonth[month] || 0) + 1;
+  }
+
+  return Object.entries(byMonth)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([month, count]) => ({ month, count }));
 }
 
 // Truncate teks panjang

@@ -1,24 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { DashboardData, FilterState, NarrativeFrame, NarrativeFrameStats, SentimentLabel, VideoStats } from "@/types";
-import CSVUploader from "@/components/CSVUploader";
 import StatsOverview from "@/components/StatsOverview";
 import SentimentChart from "@/components/charts/SentimentChart";
-import NarrativeFrameChart from "@/components/charts/NarrativeFrameChart";
-import TimeSeriesChart from "@/components/charts/TimeSeriesChart";
+import MonthlyCommentsChart from "@/components/charts/MonthlyCommentsChart";
+import TopTermsChart from "@/components/charts/TopTermsChart";
 import KeywordCloud from "@/components/charts/KeywordCloud";
 import CommentsTable from "@/components/CommentsTable";
 import {
+  formatNumber,
   calcSentimentDistribution,
   buildTimeSeries,
+  buildMonthlyCommentSeries,
   extractTopKeywords,
+  extractTopTermsFromComments,
   filterAnalyzedComments,
-  normalizeSentimentLabel,
-  sentimentScoreFromLabel,
 } from "@/lib/utils";
-
-type SentimentMode = "ai" | "source";
 
 function deriveDashboardData(
   base: DashboardData,
@@ -101,9 +99,7 @@ function deriveDashboardData(
 
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
-  const [sentimentMode, setSentimentMode] = useState<SentimentMode>("ai");
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [isLoadingData, setIsLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterState>({
     sentiment: "semua",
@@ -111,48 +107,81 @@ export default function DashboardPage() {
     narrativeFrame: "semua",
     videoId: "semua",
     kol: "semua",
+    topic: "semua",
     dateRange: null,
     searchQuery: "",
   });
 
-  const viewData = useMemo<DashboardData | null>(() => {
-    if (!data) return null;
-    if (sentimentMode === "ai") return data;
-
-    const remappedComments = data.comments.map((c) => {
-      const source = normalizeSentimentLabel(c.sourceSentiment);
-      if (!source) return c;
-      return {
-        ...c,
-        sentiment: source,
-        sentimentScore: sentimentScoreFromLabel(source),
-      };
-    });
-
-    return deriveDashboardData(data, remappedComments);
-  }, [data, sentimentMode]);
-
   const filteredViewData = useMemo<DashboardData | null>(() => {
-    if (!viewData) return null;
-    const filteredComments = filterAnalyzedComments(viewData.comments, filter);
-    return deriveDashboardData(viewData, filteredComments);
-  }, [viewData, filter]);
+    if (!data) return null;
+    const filteredComments = filterAnalyzedComments(data.comments, filter);
+    return deriveDashboardData(data, filteredComments);
+  }, [data, filter]);
 
-  const handleDataReady = (newData: DashboardData) => {
-    setData(newData);
-    setIsAnalyzing(false);
-    setError(null);
-  };
+  const monthlyComments = useMemo(() => {
+    if (!filteredViewData) return [];
+    return buildMonthlyCommentSeries(filteredViewData.comments);
+  }, [filteredViewData]);
 
-  const handleAnalyzing = (current: number, total: number) => {
-    setIsAnalyzing(true);
-    setProgress({ current, total });
-  };
+  const topTerms = useMemo(() => {
+    if (!filteredViewData) return [];
+    return extractTopTermsFromComments(filteredViewData.comments, 10);
+  }, [filteredViewData]);
 
-  const handleError = (msg: string) => {
-    setError(msg);
-    setIsAnalyzing(false);
-  };
+  const dateRangeLabel = useMemo(() => {
+    if (!filteredViewData || filteredViewData.comments.length === 0) return "-";
+
+    const validDates = filteredViewData.comments
+      .map((c) => new Date(c.publishedAt))
+      .filter((d) => !Number.isNaN(d.getTime()))
+      .sort((a, b) => a.getTime() - b.getTime());
+
+    if (validDates.length === 0) return "-";
+
+    const format = (d: Date) =>
+      d.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+
+    return `${format(validDates[0])} - ${format(validDates[validDates.length - 1])}`;
+  }, [filteredViewData]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadData = async () => {
+      setIsLoadingData(true);
+      setError(null);
+
+      try {
+        const res = await fetch("/api/bootstrap-data", { cache: "no-store" });
+        const json = await res.json();
+
+        if (!isMounted) return;
+
+        if (json.success && json.data) {
+          setData(json.data as DashboardData);
+        } else {
+          setData(null);
+          setError(json.error || "Gagal memuat data CSV dari direktori file.");
+        }
+      } catch {
+        if (!isMounted) return;
+        setData(null);
+        setError("Gagal terhubung ke server saat memuat data awal.");
+      } finally {
+        if (isMounted) setIsLoadingData(false);
+      }
+    };
+
+    void loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -173,56 +202,25 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {viewData && (
+          {data && (
             <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
               {filteredViewData?.totalComments.toLocaleString("id-ID")} komentar ditampilkan
-              <span
-                className={`px-2 py-0.5 rounded-full border text-[10px] uppercase tracking-wide ${
-                  sentimentMode === "source"
-                    ? "border-cyan-500/40 text-cyan-300 bg-cyan-500/10"
-                    : "border-indigo-500/40 text-indigo-300 bg-indigo-500/10"
-                }`}
-              >
-                Mode: {sentimentMode === "source" ? "API" : "AI"}
-              </span>
             </div>
           )}
         </div>
       </header>
 
       <main className="max-w-screen-xl mx-auto px-4 py-6 space-y-6">
-        {/* Upload Section */}
-        {!data && (
-          <CSVUploader
-            onDataReady={handleDataReady}
-            onAnalyzing={handleAnalyzing}
-            onError={handleError}
-          />
-        )}
-
         {/* Loading State */}
-        {isAnalyzing && (
+        {isLoadingData && (
           <div className="card text-center py-12 space-y-4">
             <div className="w-12 h-12 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin mx-auto" />
             <div>
               <p className="text-[var(--color-text)] font-medium">
-                Menganalisis komentar dengan AI…
+                Memuat dan menganalisis semua CSV dari direktori file…
               </p>
-              <p className="text-sm text-[var(--color-text-muted)] mt-1">
-                {progress.current} / {progress.total} komentar
-              </p>
-            </div>
-            <div className="w-64 h-1.5 bg-[var(--color-surface-2)] rounded-full mx-auto overflow-hidden">
-              <div
-                className="h-full bg-indigo-500 rounded-full transition-all duration-300"
-                style={{
-                  width:
-                    progress.total > 0
-                      ? `${(progress.current / progress.total) * 100}%`
-                      : "0%",
-                }}
-              />
+              <p className="text-sm text-[var(--color-text-muted)] mt-1">Mohon tunggu sebentar…</p>
             </div>
           </div>
         )}
@@ -235,57 +233,62 @@ export default function DashboardPage() {
         )}
 
         {/* Dashboard Content */}
-        {filteredViewData && !isAnalyzing && (
+        {filteredViewData && !isLoadingData && (
           <div className="space-y-6 animate-fade-in">
             {/* Reset button */}
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Hasil Analisis</h2>
               <div className="flex items-center gap-2">
-                <div className="inline-flex rounded-lg border border-[var(--color-border)] p-1 bg-[var(--color-surface-2)]">
-                  {([
-                    { key: "ai", label: "Sentiment AI" },
-                    { key: "source", label: "Sentiment API" },
-                  ] as Array<{ key: SentimentMode; label: string }>).map((m) => (
-                    <button
-                      key={m.key}
-                      onClick={() => setSentimentMode(m.key)}
-                      className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
-                        sentimentMode === m.key
-                          ? "bg-indigo-500/20 text-indigo-300"
-                          : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-                      }`}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
                 <button
-                  onClick={() => setData(null)}
+                  onClick={() => window.location.reload()}
                   className="btn-ghost text-xs"
                 >
-                  ← Upload Data Baru
+                  Muat Ulang Data
                 </button>
               </div>
             </div>
 
-            {/* Stats Overview */}
+            {/* WAJIB 1 - Header Dashboard */}
+            <section className="card border border-indigo-500/20 space-y-3">
+              <h2 className="text-lg md:text-xl font-semibold text-[var(--color-text)]">
+                Dashboard Analitik: Respons Publik terhadap Islam Moderat di Program Damai Indonesiaku
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
+                  <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wide">Sumber data</p>
+                  <p className="text-[var(--color-text)] font-medium">YouTube / TVOne</p>
+                </div>
+                <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
+                  <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wide">Rentang waktu data</p>
+                  <p className="text-[var(--color-text)] font-medium">{dateRangeLabel}</p>
+                </div>
+                <div className="rounded-lg bg-[var(--color-surface-2)] p-3">
+                  <p className="text-[var(--color-text-muted)] text-xs uppercase tracking-wide">Total jumlah komentar</p>
+                  <p className="text-[var(--color-text)] font-medium">
+                    {formatNumber(filteredViewData.totalComments)}
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* WAJIB 2 - Statistik Ringkasan */}
             <StatsOverview data={filteredViewData} />
 
-            {/* Charts Row 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <SentimentChart data={filteredViewData.sentimentDistribution} />
-              <NarrativeFrameChart data={filteredViewData.narrativeFrameStats} />
-            </div>
+            {/* WAJIB 2 - Distribusi komentar per bulan (line chart) */}
+            <MonthlyCommentsChart data={monthlyComments} />
 
-            {/* Time Series */}
-            <TimeSeriesChart data={filteredViewData.timeSeries} />
+            {/* WAJIB 3 - Visualisasi Utama */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <TopTermsChart data={topTerms} />
+              <SentimentChart data={filteredViewData.sentimentDistribution} />
+            </div>
 
             {/* Keywords */}
             <KeywordCloud keywords={filteredViewData.topKeywords} />
 
             {/* Comments Table */}
             <CommentsTable
-              comments={viewData?.comments ?? []}
+              comments={data?.comments ?? []}
               filter={filter}
               onFilterChange={setFilter}
             />

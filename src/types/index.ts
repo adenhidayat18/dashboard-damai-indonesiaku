@@ -8,6 +8,7 @@ export interface RawComment {
   videoId: string;
   videoTitle?: string;
   videoDescription?: string;
+  topic?: string;
   kol?: string;
   sourceSentiment?: string;
   author: string;
@@ -73,6 +74,16 @@ export interface KeywordFrequency {
   dominantFrame: NarrativeFrame;
 }
 
+export interface MonthlyCommentDataPoint {
+  month: string; // YYYY-MM
+  count: number;
+}
+
+export interface TermFrequency {
+  term: string;
+  count: number;
+}
+
 // --- State Dashboard ---
 export interface DashboardData {
   comments: AnalyzedComment[];
@@ -125,6 +136,7 @@ export interface FilterState {
   narrativeFrame: NarrativeFrame | "semua";
   videoId: string | "semua";
   kol: string | "semua";
+  topic: string | "semua";
   dateRange: { from: string; to: string } | null;
   searchQuery: string;
 }

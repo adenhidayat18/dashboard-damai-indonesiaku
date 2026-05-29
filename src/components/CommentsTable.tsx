@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { AnalyzedComment, FilterState, NarrativeFrame, SentimentLabel } from "@/types";
+import type { AnalyzedComment, FilterState, SentimentLabel } from "@/types";
 import { SENTIMENT_COLORS, SENTIMENT_LABELS_ID, truncate, filterAnalyzedComments } from "@/lib/utils";
 
 interface Props {
@@ -11,19 +11,6 @@ interface Props {
 }
 
 const SENTIMENT_OPTIONS: SentimentLabel[] = ["positif", "negatif", "netral", "ambigu"];
-const FRAME_OPTIONS: NarrativeFrame[] = [
-  "islam_moderat", "nasionalisme_religius", "toleransi",
-  "anti_radikalisme", "identitas_politik", "kritik_media", "lainnya",
-];
-const FRAME_LABELS: Record<NarrativeFrame, string> = {
-  islam_moderat:       "Islam Moderat",
-  nasionalisme_religius: "Nasionalisme",
-  toleransi:           "Toleransi",
-  anti_radikalisme:    "Anti-Radikalisme",
-  identitas_politik:   "Identitas Politik",
-  kritik_media:        "Kritik Media",
-  lainnya:             "Lainnya",
-};
 
 const PAGE_SIZE = 20;
 
@@ -39,6 +26,7 @@ export default function CommentsTable({ comments, filter, onFilterChange }: Prop
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const videoIds = [...new Set(comments.map((c) => c.videoId).filter(Boolean))];
   const kols = [...new Set(comments.map((c) => (c.kol || "").trim()).filter(Boolean))].sort();
+  const topics = [...new Set(comments.map((c) => (c.topic || "").trim()).filter(Boolean))].sort();
 
   const updateFilter = (key: keyof FilterState, value: string) => {
     onFilterChange({ ...filter, [key]: value });
@@ -85,16 +73,6 @@ export default function CommentsTable({ comments, filter, onFilterChange }: Prop
             <option key={s} value={s}>{SENTIMENT_LABELS_ID[s]}</option>
           ))}
         </select>
-        <select
-          value={filter.narrativeFrame}
-          onChange={(e) => updateFilter("narrativeFrame", e.target.value)}
-          className="px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text)] focus:outline-none focus:border-indigo-500/50"
-        >
-          <option value="semua">Semua Frame</option>
-          {FRAME_OPTIONS.map((f) => (
-            <option key={f} value={f}>{FRAME_LABELS[f]}</option>
-          ))}
-        </select>
         {videoIds.length > 1 && (
           <select
             value={filter.videoId}
@@ -115,6 +93,18 @@ export default function CommentsTable({ comments, filter, onFilterChange }: Prop
           >
             <option value="semua">Semua KOL</option>
             {kols.map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+        )}
+        {topics.length > 0 && (
+          <select
+            value={filter.topic}
+            onChange={(e) => updateFilter("topic", e.target.value)}
+            className="px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-2)] text-[var(--color-text)] focus:outline-none focus:border-indigo-500/50"
+          >
+            <option value="semua">Semua Topic</option>
+            {topics.map((name) => (
               <option key={name} value={name}>{name}</option>
             ))}
           </select>
@@ -144,7 +134,10 @@ export default function CommentsTable({ comments, filter, onFilterChange }: Prop
                       {new Date(c.publishedAt).toLocaleDateString("id-ID")}
                     </span>
                     {c.likes > 0 && (
-                      <span className="text-xs text-[var(--color-text-muted)]">👍 {c.likes}</span>
+                      <span className="text-xs text-[var(--color-text-muted)]">voteCount: {c.likes}</span>
+                    )}
+                    {(c.replyCount ?? 0) > 0 && (
+                      <span className="text-xs text-[var(--color-text-muted)]">replyCount: {c.replyCount}</span>
                     )}
                   </div>
                   <p className="text-sm text-[var(--color-text)]">
@@ -152,11 +145,16 @@ export default function CommentsTable({ comments, filter, onFilterChange }: Prop
                   </p>
                   {isExpanded && (
                     <div className="mt-2 space-y-1.5">
-                      {(c.sourceSentiment || c.kol || c.videoDescription) && (
+                      {(c.sourceSentiment || c.kol || c.topic || c.videoDescription) && (
                         <div className="flex flex-wrap gap-1">
                           {c.sourceSentiment && (
                             <span className="badge bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                               Source Sentiment: {c.sourceSentiment}
+                            </span>
+                          )}
+                          {c.topic && (
+                            <span className="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                              Topic: {c.topic}
                             </span>
                           )}
                           {c.kol && (
@@ -178,23 +176,6 @@ export default function CommentsTable({ comments, filter, onFilterChange }: Prop
                             {kw}
                           </span>
                         ))}
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {c.narrativeFrames.map((f) => (
-                          <span key={f} className="badge bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                            {FRAME_LABELS[f]}
-                          </span>
-                        ))}
-                        {c.isModerateIslamNarrative && (
-                          <span className="badge bg-green-500/10 text-green-400 border border-green-500/20">
-                            ✓ Islam Moderat
-                          </span>
-                        )}
-                        {c.isIdentityPolitics && (
-                          <span className="badge bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
-                            ⚠ Politik Identitas
-                          </span>
-                        )}
                       </div>
                     </div>
                   )}

@@ -276,7 +276,7 @@ export default function Dashboard() {
         <div className="rounded-2xl border p-5 md:p-6" style={{ borderColor: C.border, background: `linear-gradient(135deg, rgba(217,174,99,0.18), rgba(23,35,59,0.85) 40%, rgba(96,165,250,0.12))` }}>
           <div className="flex flex-wrap items-start justify-between gap-5">
             <div className="max-w-2xl">
-              <p className="text-[11px] uppercase mb-2" style={{ color: C.accentSoft, ...F.caps }}>Dashboard Analitik · S3 Komunikasi Islam</p>
+              <p className="text-[11px] uppercase mb-2" style={{ color: C.accentSoft, ...F.caps }}>Dashboard Analitik · S3 Komunikasi Penyiaran Islam</p>
               <h1 className="text-2xl md:text-4xl font-bold leading-tight" style={{ fontFamily: 'Source Serif 4, serif' }}>
                 Kontroversi <em style={{ color: C.accent }}>Mens Rea</em>{' '}
                 <span className="text-lg md:text-2xl font-normal" style={{ color: '#dce6f8' }}>Pandji Pragiwaksono</span>
@@ -285,7 +285,7 @@ export default function Dashboard() {
             </div>
             <div className="text-right space-y-1 rounded-xl border px-4 py-3" style={{ borderColor: '#3b4b70', background: 'rgba(8,14,25,0.42)' }}>
               <p className="font-medium" style={{ color: C.text, ...F.meta }}>Aden Hidayat</p>
-              <p className="text-[12px]" style={{ color: C.muted, ...F.meta }}>S3 Komunikasi Islam · 2026</p>
+              <p className="text-[12px]" style={{ color: C.muted, ...F.meta }}>S3 Komunikasi Penyiaran Islam · 2026</p>
               <div className="flex gap-2 justify-end mt-2">
                 <Badge label="Twitter/X" color={C.accent} />
                 <Badge label="YouTube iNews" color="#ff6b6b" />
@@ -565,7 +565,7 @@ export default function Dashboard() {
 
         {/* FOOTER */}
         <div className="text-center py-4 border-t" style={{ borderColor:C.border }}>
-          <p className="text-[12px]" style={{ color:C.muted, ...F.meta }}>Dashboard Analitik Mens Rea · Aden Hidayat · S3 Komunikasi Islam · 2026</p>
+          <p className="text-[12px]" style={{ color:C.muted, ...F.meta }}>Dashboard Analitik Mens Rea · Aden Hidayat · S3 Komunikasi Penyiaran Islam · 2026</p>
           <p className="text-[12px] mt-1 italic" style={{ color:'#7f91b3', ...F.meta }}>"AI mempercepat produksi; integritas ilmiah tetap milik peneliti."</p>
         </div>
 

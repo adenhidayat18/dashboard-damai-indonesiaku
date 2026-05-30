@@ -2,7 +2,7 @@
 
 **Topik Riset:** Polarisasi Sentimen Publik Terhadap Kontroversi Stand-Up Comedy 'Mens Rea' Pandji Pragiwaksono: Antara Kebebasan Berekspresi dan Penistaan Agama
 
-**Peneliti:** Aden Hidayat — S3 Komunikasi Islam (2026)
+**Peneliti:** Aden Hidayat — S3 Komunikasi Penyiaran Islam (2026)
 
 ---
 
